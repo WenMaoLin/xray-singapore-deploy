@@ -1,0 +1,151 @@
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "port": 1080,
+      "listen": "127.0.0.1",
+      "protocol": "socks",
+      "settings": {
+        "udp": true
+      }
+    },
+    {
+      "listen": "127.0.0.1",
+      "port": 1081,
+      "protocol": "http"
+    }
+  ],
+  "outbounds": [
+    {
+      "tag": "direct",
+      "protocol": "freedom",
+      "settings": {
+        "domainStrategy": "UseIPv6"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "mark": 2
+        }
+      }
+    },
+    {
+      "tag": "singapore",
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "d1trj32m6x1gkz.cloudfront.net",
+            "port": 443,
+            "users": [
+              {
+                "id": "uuid",
+                "encryption": "none"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "security": "tls",
+        "tlsSettings": {
+          "serverName": "d1trj32m6x1gkz.cloudfront.net"
+        },
+        "wsSettings": {
+          "path": "/",
+          "headers": {
+            "Host": "d1trj32m6x1gkz.cloudfront.net"
+          }
+        }
+      }
+    },
+    {
+      "tag": "proxy",
+      "protocol": "socks",
+      "settings": {
+        "servers": [
+          {
+            "address": "127.0.0.1",
+            "port": 13659
+          }
+        ]
+      }
+    },
+    {
+      "tag": "block",
+      "protocol": "blackhole",
+      "settings": {
+        "response": {
+          "type": "http"
+        }
+      }
+    },
+    {
+      "tag": "dns-out",
+      "protocol": "dns",
+      "settings": {
+        "address": "8.8.8.8"
+      },
+      "proxySettings": {
+        "tag": "proxy"
+      },
+      "streamSettings": {
+        "sockopt": {
+          "mark": 2
+        }
+      }
+    }
+  ],
+  "dns": {
+    "servers": [
+      {
+        "address": "119.29.29.29",
+        "port": 53,
+        "domains": ["geosite:cn"],
+        "expectIPs": ["geoip:cn"]
+      },
+      {
+        "address": "223.5.5.5",
+        "port": 53,
+        "domains": ["geosite:cn"],
+        "expectIPs": ["geoip:cn"]
+      },
+      "1.1.1.1",
+      "8.8.8.8",
+      "https+local://doh.dns.sb/dns-query"
+    ]
+  },
+  "routing": {
+    "domainStrategy": "IPIfNonMatch",
+    "rules": [
+      {
+        "type": "field",
+        "inboundTag": ["all-in"],
+        "port": 53,
+        "outboundTag": "dns-out"
+      },
+      {
+        "type": "field",
+        "ip": ["8.8.8.8", "1.1.1.1"],
+        "outboundTag": "proxy"
+      },
+      {
+        "type": "field",
+        "domain": ["domain:openai.com"],
+        "outboundTag": "singapore"
+      },
+      {
+        "type": "field",
+        "domain": ["geosite:category-ads-all", "api-iam.intercom.io"],
+        "outboundTag": "block"
+      },
+      {
+        "type": "field",
+        "domain": ["geosite:geolocation-!cn"],
+        "outboundTag": "singapore"
+      }
+    ]
+  }
+}
